@@ -1,0 +1,811 @@
+# =========================================================
+# CHAPTER 2 – EXPERIMENT 2
+# EFFECT OF SOIL MOISTURE ON EARLY LARVAL RECOVERY
+#
+# Statistical analyses and figure generation for two
+# experimental runs conducted in 2025 and 2026.
+# =========================================================
+
+
+# =========================================================
+# 1. REQUIRED PACKAGES
+# =========================================================
+
+# Install required packages if they are not already installed.
+# These commands only need to be run once and are therefore
+# commented out by default.
+
+# install.packages("tidyverse")
+# install.packages("car")
+# install.packages("rstatix")
+# install.packages("patchwork")
+# install.packages("cowplot")
+
+
+# Load required packages.
+
+library(tidyverse)
+library(car)
+library(rstatix)
+library(patchwork)
+library(cowplot)
+
+
+# =========================================================
+# 2. DEFINE TREATMENT ORDER AND FIGURE SETTINGS
+# =========================================================
+
+treatment_order <- c(
+  "Low",
+  "Medium",
+  "High"
+)
+
+treatment_fills <- c(
+  "Low" = "grey95",
+  "Medium" = "grey75",
+  "High" = "grey45"
+)
+
+
+# =========================================================
+# 3. IMPORT DATA
+# =========================================================
+
+run1_2025 <- read.csv(
+  "SP25 Obj 2.1 Data.csv"
+)
+
+run2_2025 <- read.csv(
+  "SP25 Obj 2.2 Data.csv"
+)
+
+run1_2026 <- read.csv(
+  "2026 Obj 2.1 Data.csv"
+)
+
+run2_2026 <- read.csv(
+  "2026 Obj 2.2 Data.csv"
+)
+
+
+# =========================================================
+# 4. PREPARE DATA
+# =========================================================
+
+# Any existing sqrt_L1_L2 column is removed and recreated
+# directly from the observed Total_L1_L2 counts using:
+#
+# sqrt(Total_L1_L2 + 0.5)
+
+run1_2025 <- run1_2025 %>%
+  select(
+    -any_of("sqrt_L1_L2")
+  ) %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    sqrt_L1_L2 = sqrt(
+      Total_L1_L2 + 0.5
+    )
+  )
+
+run2_2025 <- run2_2025 %>%
+  select(
+    -any_of("sqrt_L1_L2")
+  ) %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    sqrt_L1_L2 = sqrt(
+      Total_L1_L2 + 0.5
+    )
+  )
+
+run1_2026 <- run1_2026 %>%
+  select(
+    -any_of("sqrt_L1_L2")
+  ) %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    sqrt_L1_L2 = sqrt(
+      Total_L1_L2 + 0.5
+    )
+  )
+
+run2_2026 <- run2_2026 %>%
+  select(
+    -any_of("sqrt_L1_L2")
+  ) %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    sqrt_L1_L2 = sqrt(
+      Total_L1_L2 + 0.5
+    )
+  )
+
+
+# =========================================================
+# 5. 2025 RUN 1
+# =========================================================
+
+
+# ---------------------------------------------------------
+# INITIAL MODEL – UNTRANSFORMED DATA
+# ---------------------------------------------------------
+
+run1_2025_raw_model <- aov(
+  Total_L1_L2 ~ Treatment,
+  data = run1_2025
+)
+
+summary(
+  run1_2025_raw_model
+)
+
+qqnorm(
+  residuals(run1_2025_raw_model),
+  main = "2025 Run 1 – Untransformed Residuals"
+)
+
+qqline(
+  residuals(run1_2025_raw_model)
+)
+
+shapiro.test(
+  residuals(run1_2025_raw_model)
+)
+
+leveneTest(
+  Total_L1_L2 ~ Treatment,
+  data = run1_2025
+)
+
+
+# ---------------------------------------------------------
+# TRANSFORMED MODEL
+# ---------------------------------------------------------
+
+run1_2025_model <- aov(
+  sqrt_L1_L2 ~ Treatment,
+  data = run1_2025
+)
+
+qqnorm(
+  residuals(run1_2025_model),
+  main = "2025 Run 1 – Transformed Residuals"
+)
+
+qqline(
+  residuals(run1_2025_model)
+)
+
+run1_2025_shapiro <- shapiro.test(
+  residuals(run1_2025_model)
+)
+
+run1_2025_shapiro
+
+run1_2025_levene <- leveneTest(
+  sqrt_L1_L2 ~ Treatment,
+  data = run1_2025
+)
+
+run1_2025_levene
+
+
+# ---------------------------------------------------------
+# FINAL ANALYSIS
+# ---------------------------------------------------------
+
+run1_2025_anova <- summary(
+  run1_2025_model
+)
+
+run1_2025_anova
+
+run1_2025_tukey <- TukeyHSD(
+  run1_2025_model
+)
+
+run1_2025_tukey
+
+
+# =========================================================
+# 6. 2025 RUN 2
+# =========================================================
+
+
+# ---------------------------------------------------------
+# INITIAL MODEL – UNTRANSFORMED DATA
+# ---------------------------------------------------------
+
+run2_2025_raw_model <- aov(
+  Total_L1_L2 ~ Treatment,
+  data = run2_2025
+)
+
+summary(
+  run2_2025_raw_model
+)
+
+qqnorm(
+  residuals(run2_2025_raw_model),
+  main = "2025 Run 2 – Untransformed Residuals"
+)
+
+qqline(
+  residuals(run2_2025_raw_model)
+)
+
+shapiro.test(
+  residuals(run2_2025_raw_model)
+)
+
+leveneTest(
+  Total_L1_L2 ~ Treatment,
+  data = run2_2025
+)
+
+
+# ---------------------------------------------------------
+# TRANSFORMED MODEL
+# ---------------------------------------------------------
+
+run2_2025_model <- aov(
+  sqrt_L1_L2 ~ Treatment,
+  data = run2_2025
+)
+
+qqnorm(
+  residuals(run2_2025_model),
+  main = "2025 Run 2 – Transformed Residuals"
+)
+
+qqline(
+  residuals(run2_2025_model)
+)
+
+run2_2025_shapiro <- shapiro.test(
+  residuals(run2_2025_model)
+)
+
+run2_2025_shapiro
+
+run2_2025_levene <- leveneTest(
+  sqrt_L1_L2 ~ Treatment,
+  data = run2_2025
+)
+
+run2_2025_levene
+
+
+# ---------------------------------------------------------
+# FINAL ANALYSIS
+# ---------------------------------------------------------
+
+run2_2025_anova <- summary(
+  run2_2025_model
+)
+
+run2_2025_anova
+
+run2_2025_tukey <- TukeyHSD(
+  run2_2025_model
+)
+
+run2_2025_tukey
+
+
+# =========================================================
+# 7. 2026 RUN 1
+# =========================================================
+
+
+# ---------------------------------------------------------
+# INITIAL MODEL – UNTRANSFORMED DATA
+# ---------------------------------------------------------
+
+run1_2026_raw_model <- aov(
+  Total_L1_L2 ~ Treatment,
+  data = run1_2026
+)
+
+summary(
+  run1_2026_raw_model
+)
+
+qqnorm(
+  residuals(run1_2026_raw_model),
+  main = "2026 Run 1 – Untransformed Residuals"
+)
+
+qqline(
+  residuals(run1_2026_raw_model)
+)
+
+shapiro.test(
+  residuals(run1_2026_raw_model)
+)
+
+leveneTest(
+  Total_L1_L2 ~ Treatment,
+  data = run1_2026
+)
+
+
+# ---------------------------------------------------------
+# TRANSFORMED MODEL
+# ---------------------------------------------------------
+
+run1_2026_model <- aov(
+  sqrt_L1_L2 ~ Treatment,
+  data = run1_2026
+)
+
+qqnorm(
+  residuals(run1_2026_model),
+  main = "2026 Run 1 – Transformed Residuals"
+)
+
+qqline(
+  residuals(run1_2026_model)
+)
+
+run1_2026_shapiro <- shapiro.test(
+  residuals(run1_2026_model)
+)
+
+run1_2026_shapiro
+
+run1_2026_levene <- leveneTest(
+  sqrt_L1_L2 ~ Treatment,
+  data = run1_2026
+)
+
+run1_2026_levene
+
+
+# ---------------------------------------------------------
+# FINAL ANALYSIS – WELCH'S ONE-WAY ANOVA
+# ---------------------------------------------------------
+
+run1_2026_welch <- oneway.test(
+  sqrt_L1_L2 ~ Treatment,
+  data = run1_2026,
+  var.equal = FALSE
+)
+
+run1_2026_welch
+
+
+# ---------------------------------------------------------
+# GAMES-HOWELL PAIRWISE COMPARISONS
+# ---------------------------------------------------------
+
+run1_2026_games_howell <- games_howell_test(
+  run1_2026,
+  sqrt_L1_L2 ~ Treatment
+)
+
+run1_2026_games_howell
+
+
+# =========================================================
+# 8. 2026 RUN 2
+# =========================================================
+
+
+# ---------------------------------------------------------
+# INITIAL MODEL – UNTRANSFORMED DATA
+# ---------------------------------------------------------
+
+run2_2026_raw_model <- aov(
+  Total_L1_L2 ~ Treatment,
+  data = run2_2026
+)
+
+summary(
+  run2_2026_raw_model
+)
+
+qqnorm(
+  residuals(run2_2026_raw_model),
+  main = "2026 Run 2 – Untransformed Residuals"
+)
+
+qqline(
+  residuals(run2_2026_raw_model)
+)
+
+shapiro.test(
+  residuals(run2_2026_raw_model)
+)
+
+leveneTest(
+  Total_L1_L2 ~ Treatment,
+  data = run2_2026
+)
+
+
+# ---------------------------------------------------------
+# TRANSFORMED MODEL
+# ---------------------------------------------------------
+
+run2_2026_model <- aov(
+  sqrt_L1_L2 ~ Treatment,
+  data = run2_2026
+)
+
+qqnorm(
+  residuals(run2_2026_model),
+  main = "2026 Run 2 – Transformed Residuals"
+)
+
+qqline(
+  residuals(run2_2026_model)
+)
+
+run2_2026_shapiro <- shapiro.test(
+  residuals(run2_2026_model)
+)
+
+run2_2026_shapiro
+
+run2_2026_levene <- leveneTest(
+  sqrt_L1_L2 ~ Treatment,
+  data = run2_2026
+)
+
+run2_2026_levene
+
+
+# ---------------------------------------------------------
+# FINAL ANALYSIS – WELCH'S ONE-WAY ANOVA
+# ---------------------------------------------------------
+
+run2_2026_welch <- oneway.test(
+  sqrt_L1_L2 ~ Treatment,
+  data = run2_2026,
+  var.equal = FALSE
+)
+
+run2_2026_welch
+
+
+# ---------------------------------------------------------
+# GAMES-HOWELL PAIRWISE COMPARISONS
+# ---------------------------------------------------------
+
+run2_2026_games_howell <- games_howell_test(
+  run2_2026,
+  sqrt_L1_L2 ~ Treatment
+)
+
+run2_2026_games_howell
+
+
+# =========================================================
+# 9. SIGNIFICANCE LETTERS FOR FINAL FIGURE
+# =========================================================
+
+# Letters correspond to pairwise comparisons from the final
+# statistical analyses. Treatments sharing a letter are not
+# significantly different at alpha = 0.05.
+
+
+# 2025 Run 1
+
+letters_2025_run1 <- data.frame(
+  Treatment = factor(
+    c(
+      "Low",
+      "Medium",
+      "High"
+    ),
+    levels = treatment_order
+  ),
+  Letters = c(
+    "a",
+    "ab",
+    "b"
+  ),
+  ypos = 60
+)
+
+
+# 2025 Run 2
+
+letters_2025_run2 <- data.frame(
+  Treatment = factor(
+    c(
+      "Low",
+      "Medium",
+      "High"
+    ),
+    levels = treatment_order
+  ),
+  Letters = c(
+    "b",
+    "ab",
+    "a"
+  ),
+  ypos = 60
+)
+
+
+# 2026 Run 1
+
+letters_2026_run1 <- data.frame(
+  Treatment = factor(
+    c(
+      "Low",
+      "Medium",
+      "High"
+    ),
+    levels = treatment_order
+  ),
+  Letters = c(
+    "a",
+    "a",
+    "a"
+  ),
+  ypos = 60
+)
+
+
+# 2026 Run 2
+
+letters_2026_run2 <- data.frame(
+  Treatment = factor(
+    c(
+      "Low",
+      "Medium",
+      "High"
+    ),
+    levels = treatment_order
+  ),
+  Letters = c(
+    "ab",
+    "a",
+    "b"
+  ),
+  ypos = 60
+)
+
+
+# =========================================================
+# 10. FUNCTION FOR CREATING EACH BOXPLOT
+# =========================================================
+
+make_boxplot <- function(
+    data,
+    letters,
+    panel_title,
+    y_axis = "left",
+    show_x_labels = TRUE
+) {
+  
+  plot <- ggplot(
+    data,
+    aes(
+      x = Treatment,
+      y = Total_L1_L2,
+      fill = Treatment
+    )
+  ) +
+    
+    geom_boxplot(
+      width = 0.6,
+      color = "black",
+      linewidth = 0.4,
+      outlier.shape = 21,
+      outlier.fill = "white",
+      outlier.color = "black"
+    ) +
+    
+    geom_text(
+      data = letters,
+      aes(
+        x = Treatment,
+        y = ypos,
+        label = Letters
+      ),
+      inherit.aes = FALSE,
+      size = 4,
+      fontface = "plain"
+    ) +
+    
+    scale_fill_manual(
+      values = treatment_fills
+    ) +
+    
+    labs(
+      title = panel_title,
+      x = NULL,
+      y = NULL
+    ) +
+    
+    coord_cartesian(
+      ylim = c(
+        0,
+        65
+      ),
+      clip = "off"
+    ) +
+    
+    theme_minimal(
+      base_size = 14
+    ) +
+    
+    theme(
+      legend.position = "none",
+      
+      plot.title = element_text(
+        size = 12,
+        face = "bold",
+        hjust = 0.5
+      ),
+      
+      plot.margin = margin(
+        t = 5,
+        r = 5,
+        b = 5,
+        l = 5
+      )
+    )
+  
+  
+  if (y_axis == "right") {
+    
+    plot <- plot +
+      scale_y_continuous(
+        position = "right"
+      ) +
+      theme(
+        axis.title.y = element_blank(),
+        axis.text.y.left = element_blank(),
+        axis.ticks.y.left = element_blank(),
+        axis.text.y.right = element_text(),
+        axis.ticks.y.right = element_line()
+      )
+  }
+  
+  
+  if (!show_x_labels) {
+    
+    plot <- plot +
+      theme(
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()
+      )
+  }
+  
+  
+  return(plot)
+}
+
+
+# =========================================================
+# 11. CREATE FOUR BOXPLOT PANELS
+# =========================================================
+
+plot_2025a <- make_boxplot(
+  data = run1_2025,
+  letters = letters_2025_run1,
+  panel_title = "2025a",
+  y_axis = "left",
+  show_x_labels = FALSE
+)
+
+plot_2025b <- make_boxplot(
+  data = run2_2025,
+  letters = letters_2025_run2,
+  panel_title = "2025b",
+  y_axis = "right",
+  show_x_labels = FALSE
+)
+
+plot_2026a <- make_boxplot(
+  data = run1_2026,
+  letters = letters_2026_run1,
+  panel_title = "2026a",
+  y_axis = "left",
+  show_x_labels = TRUE
+)
+
+plot_2026b <- make_boxplot(
+  data = run2_2026,
+  letters = letters_2026_run2,
+  panel_title = "2026b",
+  y_axis = "right",
+  show_x_labels = TRUE
+)
+
+
+# =========================================================
+# 12. COMBINE FOUR PANELS
+# =========================================================
+
+panel_grid <-
+  (
+    plot_2025a |
+      plot_2025b
+  ) /
+  (
+    plot_2026a |
+      plot_2026b
+  ) +
+  plot_layout(
+    widths = c(
+      1,
+      1
+    ),
+    heights = c(
+      1,
+      1
+    )
+  )
+
+
+# =========================================================
+# 13. ADD SHARED X-AXIS TITLE
+# =========================================================
+
+with_x_title <- cowplot::plot_grid(
+  panel_grid,
+  
+  cowplot::ggdraw() +
+    cowplot::draw_label(
+      "Moisture Treatment",
+      size = 14
+    ),
+  
+  ncol = 1,
+  
+  rel_heights = c(
+    1,
+    0.06
+  )
+)
+
+
+# =========================================================
+# 14. ADD SHARED Y-AXIS TITLE
+# =========================================================
+
+combined_plot <- cowplot::plot_grid(
+  
+  cowplot::ggdraw() +
+    cowplot::draw_label(
+      "Number of L1 and L2 Larvae Recovered",
+      angle = 90,
+      size = 14
+    ),
+  
+  with_x_title,
+  
+  ncol = 2,
+  
+  rel_widths = c(
+    0.06,
+    1
+  )
+)
+
+
+# =========================================================
+# 15. DISPLAY FINAL FIGURE
+# =========================================================
+
+combined_plot
