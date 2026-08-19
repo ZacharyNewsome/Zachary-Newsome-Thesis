@@ -1,0 +1,21 @@
+Trial_ID,Made_Choice,Chosen_Treatment,Eggs,Maturity,Sperm,Fed
+1,Yes,High,6,L,N,Y
+2,Yes,High,6,L,N,Y
+3,Yes,High,4,L,Y,Y
+4,No,No Choice,0,M,N,Y
+5,No,No Choice,9,L,N,Y
+6,Yes,High,0,M,N,Y
+7,Yes,Low,0,M,N,Y
+8,Yes,Medium,10,L,N,Y
+9,Yes,Low,2,L,Y,Y
+10,Yes,Medium,8,L,Y,Y
+11,Yes,High,0,M,N,Y
+12,Yes,Low,8,L,Y,Y
+13,Yes,Low,6,L,N,Y
+14,No,No Choice,7,L,N,Y
+15,Yes,High,0,M,N,N
+16,Yes,High,8,L,Y,Y
+17,Yes,Medium,0,M,Y,Y
+18,Yes,Medium,6,L,N,Y
+19,Yes,Low,12,L,Y,Y
+20,Yes,Medium,2,L,N,Y
