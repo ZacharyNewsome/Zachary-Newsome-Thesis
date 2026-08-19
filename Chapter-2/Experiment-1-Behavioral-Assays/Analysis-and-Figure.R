@@ -57,19 +57,19 @@ treatment_fills <- c(
 # =========================================================
 
 ow_2025 <- read.csv(
-  "SP25 Obj 1 Ethovision Data for R csv.csv"
+  "SP25 Obj 1 OW Data.csv"
 )
 
 fg_2025 <- read.csv(
-  "SU25 First Gen Data for R.csv"
+  "SP25 Obj 1 FG Data.csv"
 )
 
 ow_2026 <- read.csv(
-  "SP26 OW Ethovision Data.csv"
+  "SP26 Obj 1 OW Data.csv"
 )
 
 fg_2026 <- read.csv(
-  "SP26 First Gen Ethovision Data.csv"
+  "SP26 Obj 1 FG Data.csv"
 )
 
 
