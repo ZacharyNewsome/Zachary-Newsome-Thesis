@@ -1,0 +1,1272 @@
+# =========================================================
+# CHAPTER 2 – EXPERIMENT 3
+# EFFECT OF SOIL MOISTURE ON LARVAL SURVIVAL AND DEVELOPMENT
+#
+# Statistical analyses, larval-age analyses, table creation,
+# and figure generation for experiments conducted in
+# 2025 and 2026.
+# =========================================================
+
+
+# =========================================================
+# 1. REQUIRED PACKAGES
+# =========================================================
+
+# Install required packages if they are not already installed.
+# These commands only need to be run once and are therefore
+# commented out by default.
+
+# install.packages("tidyverse")
+# install.packages("car")
+# install.packages("emmeans")
+# install.packages("gt")
+# install.packages("patchwork")
+# install.packages("gridExtra")
+
+
+# Load required packages.
+
+library(tidyverse)
+library(car)
+library(emmeans)
+library(gt)
+library(patchwork)
+library(grid)
+library(gridExtra)
+
+
+# =========================================================
+# 2. DEFINE COMMON FACTOR LEVELS AND FIGURE SETTINGS
+# =========================================================
+
+treatment_order <- c(
+  "Low",
+  "Medium",
+  "High"
+)
+
+dpi_order <- c(
+  14,
+  19,
+  24
+)
+
+treatment_fills <- c(
+  "Low" = "grey95",
+  "Medium" = "grey75",
+  "High" = "grey45"
+)
+
+dodge <- position_dodge(
+  width = 0.9
+)
+
+
+# =========================================================
+# 3. IMPORT LARVAL-RECOVERY DATA
+# =========================================================
+
+data_2025 <- read.csv(
+  "SP25 Obj 3 Data.csv"
+)
+
+data_2026 <- read.csv(
+  "SP26 Obj 3 Data.csv"
+)
+
+
+# =========================================================
+# 4. PREPARE LARVAL-RECOVERY DATA
+# =========================================================
+
+# Any existing sqrt_Total column in the 2025 dataset is
+# removed and recreated directly from the observed larval
+# counts using:
+#
+# sqrt(Total + 0.5)
+
+data_2025 <- data_2025 %>%
+  select(
+    -any_of("sqrt_Total")
+  ) %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    DPI = factor(
+      DPI,
+      levels = dpi_order
+    ),
+    sqrt_Total = sqrt(
+      Total + 0.5
+    )
+  )
+
+
+# Untransformed larval counts were used for the 2026
+# statistical analysis.
+
+data_2026 <- data_2026 %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    DPI = factor(
+      DPI,
+      levels = dpi_order
+    )
+  )
+
+
+# =========================================================
+# PART I – LARVAL RECOVERY
+# =========================================================
+
+
+# =========================================================
+# 5. 2025 – INITIAL MODEL USING UNTRANSFORMED DATA
+# =========================================================
+
+model_2025_raw <- aov(
+  Total ~ Treatment * DPI,
+  data = data_2025
+)
+
+summary(
+  model_2025_raw
+)
+
+
+# ---------------------------------------------------------
+# ASSUMPTION CHECKS – UNTRANSFORMED MODEL
+# ---------------------------------------------------------
+
+# Q-Q plot of residuals.
+
+qqPlot(
+  residuals(model_2025_raw),
+  main = "2025 – Untransformed Residuals",
+  xlab = "Theoretical Quantiles",
+  ylab = "Residuals"
+)
+
+
+# Shapiro-Wilk test for residual normality.
+
+shapiro_2025_raw <- shapiro.test(
+  residuals(model_2025_raw)
+)
+
+shapiro_2025_raw
+
+
+# Levene's test for homogeneity of variance.
+
+levene_2025_raw <- leveneTest(
+  Total ~ Treatment * DPI,
+  data = data_2025
+)
+
+levene_2025_raw
+
+
+# =========================================================
+# 6. 2025 – SQUARE-ROOT-TRANSFORMED MODEL
+# =========================================================
+
+# The untransformed response violated model assumptions.
+# Therefore, larval recovery was transformed using
+# sqrt(Total + 0.5).
+
+model_2025 <- aov(
+  sqrt_Total ~ Treatment * DPI,
+  data = data_2025
+)
+
+
+# ---------------------------------------------------------
+# ASSUMPTION CHECKS – TRANSFORMED MODEL
+# ---------------------------------------------------------
+
+qqPlot(
+  residuals(model_2025),
+  main = "2025 – Square-Root-Transformed Residuals",
+  xlab = "Theoretical Quantiles",
+  ylab = "Residuals"
+)
+
+
+shapiro_2025 <- shapiro.test(
+  residuals(model_2025)
+)
+
+shapiro_2025
+
+
+levene_2025 <- leveneTest(
+  sqrt_Total ~ Treatment * DPI,
+  data = data_2025
+)
+
+levene_2025
+
+
+# ---------------------------------------------------------
+# FINAL TWO-WAY ANOVA
+# ---------------------------------------------------------
+
+anova_2025 <- summary(
+  model_2025
+)
+
+anova_2025
+
+
+# ---------------------------------------------------------
+# TREATMENT COMPARISONS WITHIN EACH DPI
+# ---------------------------------------------------------
+
+treatment_emmeans_2025 <- emmeans(
+  model_2025,
+  ~ Treatment | DPI
+)
+
+treatment_emmeans_2025
+
+
+treatment_pairs_2025 <- pairs(
+  treatment_emmeans_2025,
+  adjust = "tukey"
+)
+
+treatment_pairs_2025
+
+
+# ---------------------------------------------------------
+# DPI COMPARISONS WITHIN EACH TREATMENT
+# ---------------------------------------------------------
+
+dpi_emmeans_2025 <- emmeans(
+  model_2025,
+  ~ DPI | Treatment
+)
+
+dpi_emmeans_2025
+
+
+dpi_pairs_2025 <- pairs(
+  dpi_emmeans_2025,
+  adjust = "tukey"
+)
+
+dpi_pairs_2025
+
+
+# ---------------------------------------------------------
+# TREATMENT EFFECT AT EACH DPI
+# ---------------------------------------------------------
+
+model_2025_14dpi <- aov(
+  sqrt_Total ~ Treatment,
+  data = data_2025 %>%
+    filter(
+      DPI == 14
+    )
+)
+
+model_2025_19dpi <- aov(
+  sqrt_Total ~ Treatment,
+  data = data_2025 %>%
+    filter(
+      DPI == 19
+    )
+)
+
+model_2025_24dpi <- aov(
+  sqrt_Total ~ Treatment,
+  data = data_2025 %>%
+    filter(
+      DPI == 24
+    )
+)
+
+
+summary(
+  model_2025_14dpi
+)
+
+summary(
+  model_2025_19dpi
+)
+
+summary(
+  model_2025_24dpi
+)
+
+
+# =========================================================
+# 7. 2026 – INITIAL MODEL USING UNTRANSFORMED DATA
+# =========================================================
+
+model_2026 <- aov(
+  Total ~ Treatment * DPI,
+  data = data_2026
+)
+
+
+# ---------------------------------------------------------
+# ASSUMPTION CHECKS
+# ---------------------------------------------------------
+
+qqPlot(
+  residuals(model_2026),
+  main = "2026 – Untransformed Residuals",
+  xlab = "Theoretical Quantiles",
+  ylab = "Residuals"
+)
+
+
+shapiro_2026 <- shapiro.test(
+  residuals(model_2026)
+)
+
+shapiro_2026
+
+
+levene_2026 <- leveneTest(
+  Total ~ Treatment * DPI,
+  data = data_2026
+)
+
+levene_2026
+
+
+# ---------------------------------------------------------
+# FINAL TWO-WAY ANOVA
+# ---------------------------------------------------------
+
+# Model assumptions were adequately satisfied using
+# untransformed larval counts in 2026.
+
+anova_2026 <- summary(
+  model_2026
+)
+
+anova_2026
+
+
+# ---------------------------------------------------------
+# TREATMENT COMPARISONS WITHIN EACH DPI
+# ---------------------------------------------------------
+
+treatment_emmeans_2026 <- emmeans(
+  model_2026,
+  ~ Treatment | DPI
+)
+
+treatment_emmeans_2026
+
+
+treatment_pairs_2026 <- pairs(
+  treatment_emmeans_2026,
+  adjust = "tukey"
+)
+
+treatment_pairs_2026
+
+
+# ---------------------------------------------------------
+# DPI COMPARISONS WITHIN EACH TREATMENT
+# ---------------------------------------------------------
+
+dpi_emmeans_2026 <- emmeans(
+  model_2026,
+  ~ DPI | Treatment
+)
+
+dpi_emmeans_2026
+
+
+dpi_pairs_2026 <- pairs(
+  dpi_emmeans_2026,
+  adjust = "tukey"
+)
+
+dpi_pairs_2026
+
+
+# ---------------------------------------------------------
+# TREATMENT EFFECT AT EACH DPI
+# ---------------------------------------------------------
+
+model_2026_14dpi <- aov(
+  Total ~ Treatment,
+  data = data_2026 %>%
+    filter(
+      DPI == 14
+    )
+)
+
+model_2026_19dpi <- aov(
+  Total ~ Treatment,
+  data = data_2026 %>%
+    filter(
+      DPI == 19
+    )
+)
+
+model_2026_24dpi <- aov(
+  Total ~ Treatment,
+  data = data_2026 %>%
+    filter(
+      DPI == 24
+    )
+)
+
+
+summary(
+  model_2026_14dpi
+)
+
+summary(
+  model_2026_19dpi
+)
+
+summary(
+  model_2026_24dpi
+)
+
+
+# ---------------------------------------------------------
+# OVERALL DPI EFFECT WITHIN EACH TREATMENT
+# ---------------------------------------------------------
+
+dpi_tests_2026 <- joint_tests(
+  model_2026,
+  by = "Treatment"
+)
+
+dpi_tests_2026
+
+
+# =========================================================
+# PART II – LARVAL AGE
+# =========================================================
+
+
+# =========================================================
+# 8. IMPORT LARVAL-AGE DATA
+# =========================================================
+
+larvae_age_2025 <- read.csv(
+  "SP25 Obj 3 Larval Age Data.csv"
+)
+
+larvae_age_2026 <- read.csv(
+  "SP26 Obj 3 Larval Age Data.csv"
+)
+
+
+# =========================================================
+# 9. PREPARE LARVAL-AGE DATA
+# =========================================================
+
+larvae_age_2025 <- larvae_age_2025 %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    DPI = factor(
+      DPI,
+      levels = dpi_order
+    )
+  )
+
+larvae_age_2026 <- larvae_age_2026 %>%
+  mutate(
+    Treatment = factor(
+      Treatment,
+      levels = treatment_order
+    ),
+    DPI = factor(
+      DPI,
+      levels = dpi_order
+    )
+  )
+
+
+# =========================================================
+# 10. FUNCTION FOR LARVAL-AGE ANALYSIS
+# =========================================================
+
+# Average larval age was compared among moisture treatments
+# separately at 14, 19, and 24 DPI using Kruskal-Wallis
+# tests.
+
+make_age_summary <- function(
+    data,
+    year_label
+) {
+  
+  # -------------------------------------------------------
+  # DESCRIPTIVE STATISTICS
+  # -------------------------------------------------------
+  
+  descriptive <- data %>%
+    filter(
+      !is.na(Average_Age)
+    ) %>%
+    group_by(
+      DPI,
+      Treatment
+    ) %>%
+    summarise(
+      n = n(),
+      
+      mean_age = mean(
+        Average_Age
+      ),
+      
+      sd_age = sd(
+        Average_Age
+      ),
+      
+      se_age = sd_age / sqrt(n),
+      
+      .groups = "drop"
+    ) %>%
+    mutate(
+      Mean_SE = sprintf(
+        "%.2f ± %.2f",
+        mean_age,
+        se_age
+      )
+    ) %>%
+    select(
+      DPI,
+      Treatment,
+      n,
+      Mean_SE
+    ) %>%
+    pivot_wider(
+      names_from = Treatment,
+      values_from = c(
+        n,
+        Mean_SE
+      )
+    )
+  
+  
+  # -------------------------------------------------------
+  # KRUSKAL-WALLIS TESTS BY DPI
+  # -------------------------------------------------------
+  
+  kw_results <- data %>%
+    filter(
+      !is.na(Average_Age)
+    ) %>%
+    group_split(
+      DPI
+    ) %>%
+    map_dfr(
+      function(dat) {
+        
+        kw <- kruskal.test(
+          Average_Age ~ Treatment,
+          data = dat
+        )
+        
+        tibble(
+          DPI = unique(
+            dat$DPI
+          ),
+          
+          KW_H = unname(
+            kw$statistic
+          ),
+          
+          KW_df = unname(
+            kw$parameter
+          ),
+          
+          KW_p = kw$p.value
+        )
+      }
+    )
+  
+  
+  # -------------------------------------------------------
+  # COMBINE DESCRIPTIVE AND INFERENTIAL RESULTS
+  # -------------------------------------------------------
+  
+  descriptive %>%
+    left_join(
+      kw_results,
+      by = "DPI"
+    ) %>%
+    mutate(
+      Year = year_label
+    ) %>%
+    select(
+      Year,
+      DPI,
+      n_Low,
+      n_Medium,
+      n_High,
+      Mean_SE_Low,
+      Mean_SE_Medium,
+      Mean_SE_High,
+      KW_H,
+      KW_df,
+      KW_p
+    )
+}
+
+
+# =========================================================
+# 11. RUN LARVAL-AGE ANALYSES FOR BOTH YEARS
+# =========================================================
+
+age_summary_2025 <- make_age_summary(
+  larvae_age_2025,
+  "2025"
+)
+
+age_summary_2026 <- make_age_summary(
+  larvae_age_2026,
+  "2026"
+)
+
+
+age_results <- bind_rows(
+  age_summary_2025,
+  age_summary_2026
+)
+
+age_results
+
+
+# =========================================================
+# 12. CREATE LARVAL-AGE SUMMARY TABLE
+# =========================================================
+
+age_table <- age_results %>%
+  select(
+    -KW_df
+  ) %>%
+  gt(
+    groupname_col = "Year",
+    rowname_col = "DPI"
+  ) %>%
+  
+  tab_spanner(
+    label = md(
+      "**Sample Size (*n*)**"
+    ),
+    columns = c(
+      n_Low,
+      n_Medium,
+      n_High
+    )
+  ) %>%
+  
+  tab_spanner(
+    label = md(
+      "**Mean Instar ± SE**"
+    ),
+    columns = c(
+      Mean_SE_Low,
+      Mean_SE_Medium,
+      Mean_SE_High
+    )
+  ) %>%
+  
+  tab_spanner(
+    label = md(
+      "**Kruskal–Wallis**"
+    ),
+    columns = c(
+      KW_H,
+      KW_p
+    )
+  ) %>%
+  
+  cols_label(
+    n_Low = "Low",
+    n_Medium = "Medium",
+    n_High = "High",
+    
+    Mean_SE_Low = "Low",
+    Mean_SE_Medium = "Medium",
+    Mean_SE_High = "High",
+    
+    KW_H = md(
+      "*H*"
+    ),
+    
+    KW_p = md(
+      "*p*"
+    )
+  ) %>%
+  
+  cols_width(
+    Mean_SE_Low ~ px(110),
+    Mean_SE_Medium ~ px(110),
+    Mean_SE_High ~ px(110)
+  ) %>%
+  
+  fmt_number(
+    columns = KW_H,
+    decimals = 3
+  ) %>%
+  
+  fmt_number(
+    columns = KW_p,
+    decimals = 3
+  ) %>%
+  
+  cols_align(
+    align = "center",
+    columns = everything()
+  ) %>%
+  
+  tab_style(
+    style = cell_text(
+      weight = "bold"
+    ),
+    locations = cells_row_groups()
+  ) %>%
+  
+  tab_options(
+    row_group.as_column = FALSE
+  )
+
+
+# Display larval-age table.
+
+age_table
+
+
+# =========================================================
+# PART III – LARVAL-RECOVERY FIGURE
+# =========================================================
+
+
+# =========================================================
+# 13. CALCULATE MEANS AND STANDARD ERRORS FROM RAW DATA
+# =========================================================
+
+figure_2025 <- data_2025 %>%
+  group_by(
+    DPI,
+    Treatment
+  ) %>%
+  summarise(
+    Mean_Larvae = mean(
+      Total,
+      na.rm = TRUE
+    ),
+    
+    SE_Larvae = sd(
+      Total,
+      na.rm = TRUE
+    ) / sqrt(
+      sum(
+        !is.na(Total)
+      )
+    ),
+    
+    .groups = "drop"
+  )
+
+
+figure_2026 <- data_2026 %>%
+  group_by(
+    DPI,
+    Treatment
+  ) %>%
+  summarise(
+    Mean_Larvae = mean(
+      Total,
+      na.rm = TRUE
+    ),
+    
+    SE_Larvae = sd(
+      Total,
+      na.rm = TRUE
+    ) / sqrt(
+      sum(
+        !is.na(Total)
+      )
+    ),
+    
+    .groups = "drop"
+  )
+
+
+# Display calculated means and standard errors for
+# comparison with thesis values.
+
+figure_2025
+figure_2026
+
+
+# =========================================================
+# 14. DEFINE SIGNIFICANCE LETTERS
+# =========================================================
+
+# Uppercase letters denote significant differences among
+# moisture treatments within a DPI.
+#
+# Lowercase letters denote significant differences across
+# DPI within a moisture treatment.
+#
+# Treatments sharing a letter are not significantly
+# different at alpha = 0.05.
+
+
+# ---------------------------------------------------------
+# 2025
+# ---------------------------------------------------------
+
+letters_2025 <- tibble(
+  DPI = factor(
+    c(
+      14, 14, 14,
+      19, 19, 19,
+      24, 24, 24
+    ),
+    levels = dpi_order
+  ),
+  
+  Treatment = factor(
+    c(
+      "Low", "Medium", "High",
+      "Low", "Medium", "High",
+      "Low", "Medium", "High"
+    ),
+    levels = treatment_order
+  ),
+  
+  MS = c(
+    "Aa", "Aa", "Aa",
+    "Ab", "Aa", "Aab",
+    "Ab", "Aa", "Ab"
+  )
+)
+
+
+# ---------------------------------------------------------
+# 2026
+# ---------------------------------------------------------
+
+letters_2026 <- tibble(
+  DPI = factor(
+    c(
+      14, 14, 14,
+      19, 19, 19,
+      24, 24, 24
+    ),
+    levels = dpi_order
+  ),
+  
+  Treatment = factor(
+    c(
+      "Low", "Medium", "High",
+      "Low", "Medium", "High",
+      "Low", "Medium", "High"
+    ),
+    levels = treatment_order
+  ),
+  
+  MS = c(
+    "Ba", "ABa", "Aa",
+    "Ba", "ABab", "Aa",
+    "Aa", "Ab", "Ab"
+  )
+)
+
+
+# =========================================================
+# 15. ADD SIGNIFICANCE LETTERS TO FIGURE DATA
+# =========================================================
+
+figure_2025 <- figure_2025 %>%
+  left_join(
+    letters_2025,
+    by = c(
+      "DPI",
+      "Treatment"
+    )
+  )
+
+figure_2026 <- figure_2026 %>%
+  left_join(
+    letters_2026,
+    by = c(
+      "DPI",
+      "Treatment"
+    )
+  )
+
+
+# =========================================================
+# 16. CREATE 2025 FIGURE
+# =========================================================
+
+top_val_2025 <- max(
+  figure_2025$Mean_Larvae +
+    figure_2025$SE_Larvae,
+  na.rm = TRUE
+)
+
+
+plot_2025 <- ggplot(
+  figure_2025,
+  aes(
+    x = DPI,
+    y = Mean_Larvae,
+    fill = Treatment
+  )
+) +
+  
+  geom_col(
+    position = dodge,
+    width = 0.9,
+    color = "black",
+    linewidth = 0.6
+  ) +
+  
+  geom_errorbar(
+    aes(
+      ymin = pmax(
+        0,
+        Mean_Larvae - SE_Larvae
+      ),
+      
+      ymax = Mean_Larvae + SE_Larvae
+    ),
+    
+    width = 0.2,
+    position = dodge,
+    linewidth = 0.5,
+    color = "black"
+  ) +
+  
+  geom_text(
+    aes(
+      label = MS,
+      
+      y = Mean_Larvae +
+        SE_Larvae +
+        top_val_2025 * 0.05
+    ),
+    
+    position = dodge,
+    vjust = 0,
+    size = 5,
+    fontface = "plain",
+    color = "black"
+  ) +
+  
+  annotate(
+    "text",
+    x = 0.6,
+    y = Inf,
+    label = "2025",
+    hjust = 0,
+    vjust = 1.5,
+    size = 7,
+    fontface = "bold"
+  ) +
+  
+  scale_fill_manual(
+    values = treatment_fills,
+    breaks = treatment_order,
+    name = "Treatment"
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    breaks = seq(
+      0,
+      100,
+      by = 20
+    ),
+    expand = expansion(
+      mult = c(
+        0,
+        0
+      )
+    )
+  ) +
+  
+  coord_cartesian(
+    ylim = c(
+      0,
+      120
+    ),
+    clip = "off"
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    
+    axis.text.y = element_text(
+      size = 16,
+      color = "black"
+    ),
+    
+    legend.position = c(
+      0.95,
+      0.95
+    ),
+    
+    legend.justification = c(
+      "right",
+      "top"
+    ),
+    
+    legend.title = element_text(
+      size = 18,
+      face = "plain"
+    ),
+    
+    legend.text = element_text(
+      size = 16
+    ),
+    
+    legend.key.height = unit(
+      0.8,
+      "cm"
+    ),
+    
+    legend.key.width = unit(
+      0.8,
+      "cm"
+    ),
+    
+    panel.grid.major.x = element_blank(),
+    
+    plot.margin = margin(
+      t = 10,
+      r = 10,
+      b = 3,
+      l = 5
+    )
+  )
+
+
+# =========================================================
+# 17. CREATE 2026 FIGURE
+# =========================================================
+
+top_val_2026 <- max(
+  figure_2026$Mean_Larvae +
+    figure_2026$SE_Larvae,
+  na.rm = TRUE
+)
+
+
+plot_2026 <- ggplot(
+  figure_2026,
+  aes(
+    x = DPI,
+    y = Mean_Larvae,
+    fill = Treatment
+  )
+) +
+  
+  geom_col(
+    position = dodge,
+    width = 0.9,
+    color = "black",
+    linewidth = 0.6
+  ) +
+  
+  geom_errorbar(
+    aes(
+      ymin = pmax(
+        0,
+        Mean_Larvae - SE_Larvae
+      ),
+      
+      ymax = Mean_Larvae + SE_Larvae
+    ),
+    
+    width = 0.2,
+    position = dodge,
+    linewidth = 0.5,
+    color = "black"
+  ) +
+  
+  geom_text(
+    aes(
+      label = MS,
+      
+      y = Mean_Larvae +
+        SE_Larvae +
+        top_val_2026 * 0.05
+    ),
+    
+    position = dodge,
+    vjust = 0,
+    size = 5,
+    fontface = "plain",
+    color = "black"
+  ) +
+  
+  annotate(
+    "text",
+    x = 0.6,
+    y = Inf,
+    label = "2026",
+    hjust = 0,
+    vjust = 1.5,
+    size = 7,
+    fontface = "bold"
+  ) +
+  
+  scale_fill_manual(
+    values = treatment_fills,
+    breaks = treatment_order,
+    name = "Treatment"
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL
+  ) +
+  
+  scale_y_continuous(
+    breaks = seq(
+      0,
+      100,
+      by = 20
+    ),
+    expand = expansion(
+      mult = c(
+        0,
+        0
+      )
+    )
+  ) +
+  
+  coord_cartesian(
+    ylim = c(
+      0,
+      120
+    ),
+    clip = "off"
+  ) +
+  
+  theme_minimal(
+    base_size = 14
+  ) +
+  
+  theme(
+    axis.text.x = element_text(
+      size = 20,
+      face = "bold",
+      color = "black",
+      margin = margin(
+        t = 8
+      )
+    ),
+    
+    axis.ticks.x = element_line(
+      color = "black",
+      linewidth = 0.6
+    ),
+    
+    axis.ticks.length.x = unit(
+      0.18,
+      "cm"
+    ),
+    
+    axis.text.y = element_text(
+      size = 16,
+      color = "black"
+    ),
+    
+    legend.position = "none",
+    
+    panel.grid.major.x = element_blank(),
+    
+    plot.margin = margin(
+      t = 3,
+      r = 10,
+      b = 18,
+      l = 5
+    )
+  )
+
+
+# =========================================================
+# 18. COMBINE 2025 AND 2026 FIGURES
+# =========================================================
+
+combined_barplots <- plot_2025 / plot_2026 +
+  plot_layout(
+    heights = c(
+      1,
+      1
+    )
+  )
+
+
+combined_grob <- patchwork::patchworkGrob(
+  combined_barplots
+)
+
+
+# =========================================================
+# 19. ADD SHARED AXIS LABELS
+# =========================================================
+
+final_plot <- arrangeGrob(
+  combined_grob,
+  
+  left = textGrob(
+    "Mean larvae recovered (±SE)",
+    rot = 90,
+    gp = gpar(
+      fontsize = 22
+    )
+  ),
+  
+  bottom = textGrob(
+    "Days post infestation (DPI)",
+    gp = gpar(
+      fontsize = 22
+    )
+  ),
+  
+  padding = unit(
+    0.5,
+    "line"
+  )
+)
+
+
+# =========================================================
+# 20. DISPLAY FINAL FIGURE
+# =========================================================
+
+grid.newpage()
+
+grid.draw(
+  final_plot
+)
