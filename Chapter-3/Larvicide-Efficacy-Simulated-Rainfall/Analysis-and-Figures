@@ -1,0 +1,2041 @@
+# =========================================================
+# CHAPTER 3 – RAINFALL STUDY
+# EFFECT OF POST-APPLICATION RAINFALL ON LARVICIDE EFFICACY
+# AGAINST ANNUAL BLUEGRASS WEEVIL
+#
+# Statistical analyses and figure generation for experiments
+# conducted in 2025 and 2026.
+# =========================================================
+
+
+# =========================================================
+# 1. REQUIRED PACKAGES
+# =========================================================
+
+# Install required packages if they are not already installed.
+# These commands only need to be run once and are therefore
+# commented out by default.
+
+# install.packages("tidyverse")
+# install.packages("glmmTMB")
+# install.packages("DHARMa")
+# install.packages("performance")
+# install.packages("car")
+# install.packages("emmeans")
+# install.packages("patchwork")
+# install.packages("cowplot")
+# install.packages("ggpattern")
+
+
+# Load required packages.
+
+library(tidyverse)
+library(glmmTMB)
+library(DHARMa)
+library(performance)
+library(car)
+library(emmeans)
+library(patchwork)
+library(cowplot)
+library(ggpattern)
+
+
+# =========================================================
+# 2. IMPORT RAW DATA
+# =========================================================
+
+rain_2025 <- read.csv(
+  "SP25 Obj 4 Raw Data (No 6, 22).csv"
+)
+
+rain_2026 <- read.csv(
+  "2026 Obj 4 Raw Data.csv"
+)
+
+
+# =========================================================
+# 3. DEFINE COMMON FACTOR LEVELS
+# =========================================================
+
+# Product order is arranged from lowest to highest Koc,
+# with the untreated control first.
+
+product_order <- c(
+  "control",
+  "cyantraniliprole",
+  "tetraniliprole",
+  "spinosad",
+  "isocycloseram",
+  "novaluron"
+)
+
+rainfall_order <- c(
+  "none",
+  "medium",
+  "high"
+)
+
+
+# =========================================================
+# 4. PREPARE DATA
+# =========================================================
+
+rain_2025 <- rain_2025 %>%
+  mutate(
+    plot = factor(
+      plot
+    ),
+    
+    product = factor(
+      product,
+      levels = product_order
+    ),
+    
+    rainfall = factor(
+      rainfall,
+      levels = rainfall_order
+    )
+  )
+
+
+rain_2026 <- rain_2026 %>%
+  mutate(
+    plot = factor(
+      plot
+    ),
+    
+    product = factor(
+      product,
+      levels = product_order
+    ),
+    
+    rainfall = factor(
+      rainfall,
+      levels = rainfall_order
+    )
+  )
+
+# =========================================================
+# PART I – 2025 STATISTICAL ANALYSIS
+# =========================================================
+
+
+# =========================================================
+# 5. 2025 POISSON GLMM
+# =========================================================
+
+model_pois_2025 <- glmmTMB(
+  total_L3_L5 ~ product * rainfall +
+    (1 | plot),
+  family = poisson(
+    link = "log"
+  ),
+  data = rain_2025
+)
+
+summary(
+  model_pois_2025
+)
+
+
+# ---------------------------------------------------------
+# POISSON MODEL DIAGNOSTICS
+# ---------------------------------------------------------
+
+set.seed(
+  123
+)
+
+res_pois_2025 <- simulateResiduals(
+  fittedModel = model_pois_2025,
+  n = 1000
+)
+
+testUniformity(
+  res_pois_2025
+)
+
+testDispersion(
+  res_pois_2025
+)
+
+testZeroInflation(
+  res_pois_2025
+)
+
+testOutliers(
+  res_pois_2025
+)
+
+check_overdispersion(
+  model_pois_2025
+)
+
+
+# =========================================================
+# 6. 2025 NEGATIVE-BINOMIAL GLMM
+# =========================================================
+
+# The negative-binomial model was fitted after evaluation
+# of the Poisson model indicated inadequate fit.
+
+model_nb_2025 <- glmmTMB(
+  total_L3_L5 ~ product * rainfall +
+    (1 | plot),
+  family = nbinom2(
+    link = "log"
+  ),
+  data = rain_2025
+)
+
+summary(
+  model_nb_2025
+)
+
+
+# ---------------------------------------------------------
+# MODEL CONVERGENCE
+# ---------------------------------------------------------
+
+model_nb_2025$fit$convergence
+
+model_nb_2025$sdr$pdHess
+
+VarCorr(
+  model_nb_2025
+)
+
+
+# ---------------------------------------------------------
+# NEGATIVE-BINOMIAL MODEL DIAGNOSTICS
+# ---------------------------------------------------------
+
+set.seed(
+  123
+)
+
+res_nb_2025 <- simulateResiduals(
+  fittedModel = model_nb_2025,
+  n = 1000
+)
+
+testUniformity(
+  res_nb_2025
+)
+
+testDispersion(
+  res_nb_2025
+)
+
+testZeroInflation(
+  res_nb_2025
+)
+
+testOutliers(
+  res_nb_2025
+)
+
+check_overdispersion(
+  model_nb_2025
+)
+
+
+# =========================================================
+# 7. 2025 TYPE III WALD TESTS
+# =========================================================
+
+Anova(
+  model_nb_2025,
+  type = 3
+)
+
+
+# =========================================================
+# 8. 2025 ESTIMATED MARGINAL MEANS
+# =========================================================
+
+emm_2025 <- emmeans(
+  model_nb_2025,
+  ~ product * rainfall,
+  type = "response"
+)
+
+emm_2025
+
+
+# =========================================================
+# 9. 2025 RAINFALL COMPARISONS WITHIN EACH PRODUCT
+# =========================================================
+
+rain_within_product_2025 <- pairs(
+  emmeans(
+    model_nb_2025,
+    ~ rainfall | product,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  rain_within_product_2025,
+  infer = TRUE
+)
+
+
+# =========================================================
+# 10. 2025 PRODUCT COMPARISONS WITHIN EACH RAINFALL LEVEL
+# =========================================================
+
+product_within_rain_2025 <- pairs(
+  emmeans(
+    model_nb_2025,
+    ~ product | rainfall,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  product_within_rain_2025,
+  infer = TRUE
+)
+
+
+# =========================================================
+# 11. 2025 PRIOR-REGULARIZED NEGATIVE-BINOMIAL GLMM
+# =========================================================
+
+# Near-zero larval recovery in the spinosad treatment
+# produced extreme coefficient estimates in the standard
+# negative-binomial model. Weakly informative priors were
+# therefore applied to regularize the fixed-effect estimates.
+#
+# Intercept: normal(0, 5)
+# Remaining fixed effects: normal(0, 3)
+
+nb_priors_2025 <- data.frame(
+  prior = c(
+    "normal(0,5)",
+    "normal(0,3)"
+  ),
+  
+  class = c(
+    "beta",
+    "beta"
+  ),
+  
+  coef = c(
+    "(Intercept)",
+    ""
+  )
+)
+
+
+model_nb_prior_2025 <- update(
+  model_nb_2025,
+  priors = nb_priors_2025
+)
+
+summary(
+  model_nb_prior_2025
+)
+
+
+# ---------------------------------------------------------
+# MODEL CONVERGENCE
+# ---------------------------------------------------------
+
+model_nb_prior_2025$fit$convergence
+
+model_nb_prior_2025$sdr$pdHess
+
+VarCorr(
+  model_nb_prior_2025
+)
+
+
+# ---------------------------------------------------------
+# PRIOR-REGULARIZED MODEL DIAGNOSTICS
+# ---------------------------------------------------------
+
+set.seed(
+  123
+)
+
+res_nb_prior_2025 <- simulateResiduals(
+  fittedModel = model_nb_prior_2025,
+  n = 1000
+)
+
+testUniformity(
+  res_nb_prior_2025
+)
+
+testDispersion(
+  res_nb_prior_2025
+)
+
+testZeroInflation(
+  res_nb_prior_2025
+)
+
+testOutliers(
+  res_nb_prior_2025
+)
+
+check_overdispersion(
+  model_nb_prior_2025
+)
+
+
+# =========================================================
+# 12. PRIOR-REGULARIZED MODEL – TYPE III WALD TESTS
+# =========================================================
+
+Anova(
+  model_nb_prior_2025,
+  type = 3
+)
+
+
+# =========================================================
+# 13. PRIOR-REGULARIZED MODEL – ESTIMATED MARGINAL MEANS
+# =========================================================
+
+emm_prior_2025 <- emmeans(
+  model_nb_prior_2025,
+  ~ product * rainfall,
+  type = "response"
+)
+
+emm_prior_2025
+
+
+# =========================================================
+# 14. PRIOR MODEL – RAINFALL WITHIN PRODUCT
+# =========================================================
+
+rain_within_product_prior_2025 <- pairs(
+  emmeans(
+    model_nb_prior_2025,
+    ~ rainfall | product,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  rain_within_product_prior_2025,
+  infer = TRUE
+)
+
+
+# =========================================================
+# 15. PRIOR MODEL – PRODUCTS WITHIN RAINFALL
+# =========================================================
+
+product_within_rain_prior_2025 <- pairs(
+  emmeans(
+    model_nb_prior_2025,
+    ~ product | rainfall,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  product_within_rain_prior_2025,
+  infer = TRUE
+)
+
+
+# =========================================================
+# 16. 2025 SENSITIVITY ANALYSIS – REMOVE SPINOSAD
+# =========================================================
+
+# The full negative-binomial model was refitted after
+# excluding spinosad to determine whether the extreme
+# spinosad response influenced inference for the remaining
+# larvicides.
+
+rain_2025_no_spino <- rain_2025 %>%
+  filter(
+    product != "spinosad"
+  ) %>%
+  droplevels()
+
+
+model_nb_no_spino_2025 <- glmmTMB(
+  total_L3_L5 ~ product * rainfall +
+    (1 | plot),
+  family = nbinom2(
+    link = "log"
+  ),
+  data = rain_2025_no_spino
+)
+
+summary(
+  model_nb_no_spino_2025
+)
+
+
+# ---------------------------------------------------------
+# MODEL CONVERGENCE
+# ---------------------------------------------------------
+
+model_nb_no_spino_2025$fit$convergence
+
+model_nb_no_spino_2025$sdr$pdHess
+
+VarCorr(
+  model_nb_no_spino_2025
+)
+
+
+# ---------------------------------------------------------
+# MODEL DIAGNOSTICS
+# ---------------------------------------------------------
+
+set.seed(
+  123
+)
+
+res_no_spino_2025 <- simulateResiduals(
+  fittedModel = model_nb_no_spino_2025,
+  n = 1000
+)
+
+testUniformity(
+  res_no_spino_2025
+)
+
+testDispersion(
+  res_no_spino_2025
+)
+
+testZeroInflation(
+  res_no_spino_2025
+)
+
+testOutliers(
+  res_no_spino_2025
+)
+
+check_overdispersion(
+  model_nb_no_spino_2025
+)
+
+
+# ---------------------------------------------------------
+# TYPE III WALD TESTS
+# ---------------------------------------------------------
+
+Anova(
+  model_nb_no_spino_2025,
+  type = 3
+)
+
+
+# ---------------------------------------------------------
+# RAINFALL COMPARISONS WITHIN PRODUCT
+# ---------------------------------------------------------
+
+rain_no_spino_2025 <- pairs(
+  emmeans(
+    model_nb_no_spino_2025,
+    ~ rainfall | product,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  rain_no_spino_2025,
+  infer = TRUE
+)
+
+
+# ---------------------------------------------------------
+# PRODUCT COMPARISONS WITHIN RAINFALL
+# ---------------------------------------------------------
+
+product_no_spino_2025 <- pairs(
+  emmeans(
+    model_nb_no_spino_2025,
+    ~ product | rainfall,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  product_no_spino_2025,
+  infer = TRUE
+)
+
+
+# =========================================================
+# PART II – 2026 STATISTICAL ANALYSIS
+# =========================================================
+
+
+# =========================================================
+# 17. 2026 POISSON GLMM
+# =========================================================
+
+model_pois_2026 <- glmmTMB(
+  total_L3_L5 ~ product * rainfall +
+    (1 | plot),
+  family = poisson(
+    link = "log"
+  ),
+  data = rain_2026
+)
+
+summary(
+  model_pois_2026
+)
+
+
+# ---------------------------------------------------------
+# POISSON MODEL DIAGNOSTICS
+# ---------------------------------------------------------
+
+set.seed(
+  123
+)
+
+res_pois_2026 <- simulateResiduals(
+  fittedModel = model_pois_2026,
+  n = 1000
+)
+
+testUniformity(
+  res_pois_2026
+)
+
+testDispersion(
+  res_pois_2026
+)
+
+testZeroInflation(
+  res_pois_2026
+)
+
+testOutliers(
+  res_pois_2026
+)
+
+check_overdispersion(
+  model_pois_2026
+)
+
+
+# =========================================================
+# 18. 2026 NEGATIVE-BINOMIAL GLMM
+# =========================================================
+
+model_nb_2026 <- glmmTMB(
+  total_L3_L5 ~ product * rainfall +
+    (1 | plot),
+  family = nbinom2(
+    link = "log"
+  ),
+  data = rain_2026
+)
+
+summary(
+  model_nb_2026
+)
+
+
+# ---------------------------------------------------------
+# MODEL CONVERGENCE
+# ---------------------------------------------------------
+
+model_nb_2026$fit$convergence
+
+model_nb_2026$sdr$pdHess
+
+VarCorr(
+  model_nb_2026
+)
+
+
+# ---------------------------------------------------------
+# NEGATIVE-BINOMIAL MODEL DIAGNOSTICS
+# ---------------------------------------------------------
+
+set.seed(
+  123
+)
+
+res_nb_2026 <- simulateResiduals(
+  fittedModel = model_nb_2026,
+  n = 1000
+)
+
+testUniformity(
+  res_nb_2026
+)
+
+testDispersion(
+  res_nb_2026
+)
+
+testZeroInflation(
+  res_nb_2026
+)
+
+testOutliers(
+  res_nb_2026
+)
+
+check_overdispersion(
+  model_nb_2026
+)
+
+
+# =========================================================
+# 19. 2026 TYPE III WALD TESTS
+# =========================================================
+
+Anova(
+  model_nb_2026,
+  type = 3
+)
+
+
+# =========================================================
+# 20. 2026 ESTIMATED MARGINAL MEANS
+# =========================================================
+
+emm_2026 <- emmeans(
+  model_nb_2026,
+  ~ product * rainfall,
+  type = "response"
+)
+
+emm_2026
+
+
+# =========================================================
+# 21. 2026 RAINFALL COMPARISONS WITHIN EACH PRODUCT
+# =========================================================
+
+rain_within_product_2026 <- pairs(
+  emmeans(
+    model_nb_2026,
+    ~ rainfall | product,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  rain_within_product_2026,
+  infer = TRUE
+)
+
+
+# =========================================================
+# 22. 2026 PRODUCT COMPARISONS WITHIN EACH RAINFALL LEVEL
+# =========================================================
+
+product_within_rain_2026 <- pairs(
+  emmeans(
+    model_nb_2026,
+    ~ product | rainfall,
+    type = "response"
+  ),
+  adjust = "tukey"
+)
+
+summary(
+  product_within_rain_2026,
+  infer = TRUE
+)
+
+
+# =========================================================
+# PART III – COMMON FIGURE SETTINGS
+# =========================================================
+
+
+# =========================================================
+# 23. KOC VALUES
+# =========================================================
+
+koc_values <- tibble(
+  product = c(
+    "cyantraniliprole",
+    "tetraniliprole",
+    "spinosad",
+    "isocycloseram",
+    "novaluron"
+  ),
+  
+  Koc = c(
+    241,
+    251,
+    701,
+    8567,
+    9598
+  )
+)
+
+
+# =========================================================
+# PART IV – FIGURE 3.1
+# LARVAL RECOVERY BY PRODUCT AND RAINFALL
+# =========================================================
+
+
+# =========================================================
+# 24. CUSTOM Y-AXIS COMPRESSION
+# =========================================================
+
+# Values from 0 to 15 are displayed normally.
+# Values above 15 are compressed to prevent large
+# observations from stretching the figure vertically.
+
+squish_upper <- function(x) {
+  
+  ifelse(
+    x > 15,
+    15 + (x - 15) * 0.25,
+    x
+  )
+}
+
+
+unsquish_upper <- function(x) {
+  
+  ifelse(
+    x > 15,
+    15 + (x - 15) / 0.25,
+    x
+  )
+}
+
+
+# =========================================================
+# 25. RAINFALL FILLS
+# =========================================================
+
+rain_fills <- c(
+  "none" = "white",
+  "medium" = "grey90",
+  "high" = "grey65"
+)
+
+
+# =========================================================
+# 26. FIGURE 3.1 SIGNIFICANCE LETTERS – 2025
+# =========================================================
+
+# Uppercase letters compare rainfall levels within a
+# larvicide.
+#
+# Lowercase letters compare larvicides at the corresponding
+# rainfall level.
+
+letters_3_1_2025 <- data.frame(
+  product = factor(
+    c(
+      rep("control", 3),
+      rep("tetraniliprole", 3),
+      rep("cyantraniliprole", 3),
+      rep("spinosad", 3),
+      rep("novaluron", 3),
+      rep("isocycloseram", 3)
+    ),
+    levels = product_order
+  ),
+  
+  rainfall = factor(
+    rep(
+      c(
+        "none",
+        "medium",
+        "high"
+      ),
+      6
+    ),
+    levels = rainfall_order
+  ),
+  
+  label = c(
+    # Untreated control
+    "Aa", "Aa", "Aa",
+    
+    # Tetraniliprole
+    "Aa", "Aa", "Aa",
+    
+    # Cyantraniliprole
+    "Bb", "ABa", "Aa",
+    
+    # Spinosad
+    "Ab", "Ab", "Ab",
+    
+    # Novaluron
+    "Aa", "Aa", "Aa",
+    
+    # Isocycloseram
+    "ABb", "Bb", "Aa"
+  ),
+  
+  y = -1
+)
+
+
+# =========================================================
+# 27. FIGURE 3.1 SIGNIFICANCE LETTERS – 2026
+# =========================================================
+
+letters_3_1_2026 <- data.frame(
+  product = factor(
+    c(
+      rep("control", 3),
+      rep("tetraniliprole", 3),
+      rep("cyantraniliprole", 3),
+      rep("spinosad", 3),
+      rep("novaluron", 3),
+      rep("isocycloseram", 3)
+    ),
+    levels = product_order
+  ),
+  
+  rainfall = factor(
+    rep(
+      c(
+        "none",
+        "medium",
+        "high"
+      ),
+      6
+    ),
+    levels = rainfall_order
+  ),
+  
+  label = c(
+    # Untreated control
+    "Aa", "Aa", "Aa",
+    
+    # Tetraniliprole
+    "Aa", "Aa", "Aa",
+    
+    # Cyantraniliprole
+    "Bb", "Aa", "ABa",
+    
+    # Spinosad
+    "Ba", "Aa", "ABa",
+    
+    # Novaluron
+    "Ab", "Aa", "Aa",
+    
+    # Isocycloseram
+    "Aa", "Aa", "Aa"
+  ),
+  
+  y = -1
+)
+
+
+# =========================================================
+# 28. CREATE 2025 FIGURE 3.1 PANEL
+# =========================================================
+
+plot_3_1_2025 <- ggplot(
+  rain_2025,
+  aes(
+    x = rainfall,
+    y = total_L3_L5,
+    fill = rainfall
+  )
+) +
+  
+  geom_boxplot(
+    outlier.shape = NA,
+    width = 0.55
+  ) +
+  
+  geom_jitter(
+    width = 0.15,
+    height = 0,
+    alpha = 0.6,
+    size = 1.8
+  ) +
+  
+  geom_text(
+    data = letters_3_1_2025,
+    aes(
+      x = rainfall,
+      y = y,
+      label = label
+    ),
+    inherit.aes = FALSE,
+    size = 4
+  ) +
+  
+  facet_wrap(
+    ~ product,
+    ncol = 6,
+    labeller = as_labeller(
+      c(
+        control = "UTC",
+        cyantraniliprole = "Cyantraniliprole",
+        tetraniliprole = "Tetraniliprole",
+        spinosad = "Spinosad",
+        isocycloseram = "Isocycloseram",
+        novaluron = "Novaluron"
+      )
+    )
+  ) +
+  
+  scale_x_discrete(
+    labels = c(
+      none = "0.00 cm",
+      medium = "3.81 cm",
+      high = "7.62 cm"
+    )
+  ) +
+  
+  scale_fill_manual(
+    values = rain_fills,
+    breaks = rainfall_order,
+    labels = c(
+      "0.00 cm",
+      "3.81 cm",
+      "7.62 cm"
+    ),
+    name = "Simulated Rainfall"
+  ) +
+  
+  scale_y_continuous(
+    trans = scales::trans_new(
+      "squish",
+      transform = squish_upper,
+      inverse = unsquish_upper
+    ),
+    
+    breaks = c(
+      0,
+      5,
+      10,
+      15,
+      25,
+      35
+    ),
+    
+    labels = c(
+      "0",
+      "5",
+      "10",
+      "15",
+      "25",
+      "35"
+    ),
+    
+    sec.axis = dup_axis(
+      name = NULL
+    ),
+    
+    expand = expansion(
+      mult = c(
+        0,
+        0.05
+      )
+    )
+  ) +
+  
+  coord_cartesian(
+    ylim = c(
+      -2,
+      NA
+    )
+  ) +
+  
+  theme_bw() +
+  
+  theme(
+    plot.title = element_text(
+      hjust = 0,
+      face = "bold",
+      size = 12
+    ),
+    
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank()
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "2025"
+  )
+
+
+# =========================================================
+# 29. CREATE 2026 FIGURE 3.1 PANEL
+# =========================================================
+
+plot_3_1_2026 <- ggplot(
+  rain_2026,
+  aes(
+    x = rainfall,
+    y = total_L3_L5,
+    fill = rainfall
+  )
+) +
+  
+  geom_boxplot(
+    outlier.shape = NA,
+    width = 0.55
+  ) +
+  
+  geom_jitter(
+    width = 0.15,
+    height = 0,
+    alpha = 0.6,
+    size = 1.8
+  ) +
+  
+  geom_text(
+    data = letters_3_1_2026,
+    aes(
+      x = rainfall,
+      y = y,
+      label = label
+    ),
+    inherit.aes = FALSE,
+    size = 4
+  ) +
+  
+  facet_wrap(
+    ~ product,
+    ncol = 6,
+    labeller = as_labeller(
+      c(
+        control = "UTC",
+        cyantraniliprole = "Cyantraniliprole",
+        tetraniliprole = "Tetraniliprole",
+        spinosad = "Spinosad",
+        isocycloseram = "Isocycloseram",
+        novaluron = "Novaluron"
+      )
+    )
+  ) +
+  
+  scale_x_discrete(
+    labels = c(
+      none = "0.00 cm",
+      medium = "3.81 cm",
+      high = "7.62 cm"
+    )
+  ) +
+  
+  scale_fill_manual(
+    values = rain_fills,
+    breaks = rainfall_order,
+    labels = c(
+      "0.00 cm",
+      "3.81 cm",
+      "7.62 cm"
+    ),
+    name = "Simulated Rainfall"
+  ) +
+  
+  scale_y_continuous(
+    trans = scales::trans_new(
+      "squish",
+      transform = squish_upper,
+      inverse = unsquish_upper
+    ),
+    
+    breaks = c(
+      0,
+      5,
+      10,
+      15,
+      25,
+      35
+    ),
+    
+    labels = c(
+      "0",
+      "5",
+      "10",
+      "15",
+      "25",
+      "35"
+    ),
+    
+    limits = c(
+      -2,
+      35
+    ),
+    
+    sec.axis = dup_axis(
+      name = NULL
+    ),
+    
+    expand = expansion(
+      mult = c(
+        0,
+        0.05
+      )
+    )
+  ) +
+  
+  theme_bw() +
+  
+  theme(
+    plot.title = element_text(
+      hjust = 0,
+      face = "bold",
+      size = 12
+    ),
+    
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank()
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "2026"
+  )
+
+
+# =========================================================
+# 30. COMBINE FIGURE 3.1
+# =========================================================
+
+combined_3_1 <- plot_3_1_2025 / plot_3_1_2026 +
+  plot_layout(
+    heights = c(
+      1,
+      1
+    ),
+    guides = "collect"
+  ) &
+  theme(
+    legend.position = "bottom"
+  )
+
+
+figure_3_1 <- ggdraw() +
+  
+  draw_plot(
+    combined_3_1,
+    x = 0.06,
+    y = 0,
+    width = 0.94,
+    height = 1
+  ) +
+  
+  draw_label(
+    "Number of L3–L5 Larvae Recovered per Subplot",
+    x = 0.035,
+    y = 0.5,
+    angle = 90,
+    size = 12
+  )
+
+
+# Display Figure 3.1.
+
+figure_3_1
+
+
+# =========================================================
+# PART V – FIGURE 3.2
+# PERCENT CONTROL BY KOC AND RAINFALL
+# =========================================================
+
+
+# =========================================================
+# 31. ADD KOC VALUES
+# =========================================================
+
+# Remove any existing Koc column before joining the final
+# Koc values used in this study.
+
+percent_data_2025 <- rain_2025 %>%
+  select(
+    -any_of("Koc")
+  ) %>%
+  mutate(
+    product = as.character(
+      product
+    )
+  ) %>%
+  left_join(
+    koc_values,
+    by = "product"
+  )
+
+
+percent_data_2026 <- rain_2026 %>%
+  select(
+    -any_of("Koc")
+  ) %>%
+  mutate(
+    product = as.character(
+      product
+    )
+  ) %>%
+  left_join(
+    koc_values,
+    by = "product"
+  )
+
+# =========================================================
+# 32. CALCULATE UNTREATED CONTROL MEANS
+# =========================================================
+
+control_values_2025 <- percent_data_2025 %>%
+  filter(
+    product == "control"
+  ) %>%
+  group_by(
+    rainfall
+  ) %>%
+  summarise(
+    control_mean = mean(
+      total_L3_L5,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+
+control_values_2026 <- percent_data_2026 %>%
+  filter(
+    product == "control"
+  ) %>%
+  group_by(
+    rainfall
+  ) %>%
+  summarise(
+    control_mean = mean(
+      total_L3_L5,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  )
+
+
+# =========================================================
+# 33. CALCULATE PERCENT CONTROL
+# =========================================================
+
+percent_summary_2025 <- percent_data_2025 %>%
+  group_by(
+    rainfall,
+    product,
+    Koc
+  ) %>%
+  summarise(
+    mean_total = mean(
+      total_L3_L5,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    control_values_2025,
+    by = "rainfall"
+  ) %>%
+  mutate(
+    percent_control_raw =
+      (1 - mean_total / control_mean) * 100,
+    
+    percent_control_plot = pmax(
+      percent_control_raw,
+      0
+    )
+  ) %>%
+  filter(
+    product != "control"
+  )
+
+
+percent_summary_2026 <- percent_data_2026 %>%
+  group_by(
+    rainfall,
+    product,
+    Koc
+  ) %>%
+  summarise(
+    mean_total = mean(
+      total_L3_L5,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  ) %>%
+  left_join(
+    control_values_2026,
+    by = "rainfall"
+  ) %>%
+  mutate(
+    percent_control_raw =
+      (1 - mean_total / control_mean) * 100,
+    
+    percent_control_plot = pmax(
+      percent_control_raw,
+      0
+    )
+  ) %>%
+  filter(
+    product != "control"
+  )
+
+
+# =========================================================
+# 34. FIGURE 3.2 PRODUCT SETTINGS
+# =========================================================
+
+insecticide_order <- c(
+  "cyantraniliprole",
+  "tetraniliprole",
+  "spinosad",
+  "isocycloseram",
+  "novaluron"
+)
+
+koc_order <- c(
+  241,
+  251,
+  701,
+  8567,
+  9598
+)
+
+
+product_fills <- c(
+  "cyantraniliprole" = "gray65",
+  "tetraniliprole" = "gray85",
+  "spinosad" = "gray45",
+  "isocycloseram" = "gray10",
+  "novaluron" = "white"
+)
+
+
+product_patterns <- c(
+  "cyantraniliprole" = "stripe",
+  "tetraniliprole" = "none",
+  "spinosad" = "crosshatch",
+  "isocycloseram" = "polygon_tiling",
+  "novaluron" = "circle"
+)
+
+
+product_labels <- c(
+  "cyantraniliprole" = "Cyantraniliprole",
+  "tetraniliprole" = "Tetraniliprole",
+  "spinosad" = "Spinosad",
+  "isocycloseram" = "Isocycloseram",
+  "novaluron" = "Novaluron"
+)
+
+
+# =========================================================
+# 35. FIGURE 3.2 SIGNIFICANCE LETTERS – 2025
+# =========================================================
+
+letters_3_2_2025 <- tibble(
+  rainfall = c(
+    "none", "none", "none", "none", "none",
+    "medium", "medium", "medium", "medium", "medium",
+    "high", "high", "high", "high", "high"
+  ),
+  
+  product = c(
+    "tetraniliprole",
+    "cyantraniliprole",
+    "spinosad",
+    "novaluron",
+    "isocycloseram",
+    
+    "tetraniliprole",
+    "cyantraniliprole",
+    "spinosad",
+    "novaluron",
+    "isocycloseram",
+    
+    "tetraniliprole",
+    "cyantraniliprole",
+    "spinosad",
+    "novaluron",
+    "isocycloseram"
+  ),
+  
+  sig = c(
+    # 0.00 cm
+    "b", "ab", "a", "b", "ab",
+    
+    # 3.81 cm
+    "b", "b", "a", "b", "a",
+    
+    # 7.62 cm
+    "b", "b", "a", "b", "ab"
+  )
+)
+
+
+# =========================================================
+# 36. FIGURE 3.2 SIGNIFICANCE LETTERS – 2026
+# =========================================================
+
+letters_3_2_2026 <- tibble(
+  rainfall = c(
+    "none", "none", "none", "none", "none",
+    "medium", "medium", "medium", "medium", "medium",
+    "high", "high", "high", "high", "high"
+  ),
+  
+  product = c(
+    "tetraniliprole",
+    "cyantraniliprole",
+    "spinosad",
+    "novaluron",
+    "isocycloseram",
+    
+    "tetraniliprole",
+    "cyantraniliprole",
+    "spinosad",
+    "novaluron",
+    "isocycloseram",
+    
+    "tetraniliprole",
+    "cyantraniliprole",
+    "spinosad",
+    "novaluron",
+    "isocycloseram"
+  ),
+  
+  sig = c(
+    # 0.00 cm
+    "a", "a", "a", "a", "a",
+    
+    # 3.81 cm
+    "a", "a", "a", "a", "a",
+    
+    # 7.62 cm
+    "a", "a", "a", "a", "a"
+  )
+)
+
+
+# =========================================================
+# 37. PREPARE FIGURE 3.2 DATA
+# =========================================================
+
+percent_summary_2025 <- percent_summary_2025 %>%
+  mutate(
+    rainfall = as.character(
+      rainfall
+    )
+  ) %>%
+  left_join(
+    letters_3_2_2025,
+    by = c(
+      "rainfall",
+      "product"
+    )
+  ) %>%
+  mutate(
+    rainfall = factor(
+      rainfall,
+      levels = rainfall_order
+    ),
+    
+    product = factor(
+      product,
+      levels = insecticide_order
+    ),
+    
+    Koc_label = factor(
+      Koc,
+      levels = koc_order
+    ),
+    
+    label_y = percent_control_plot + 8
+  )
+
+
+percent_summary_2026 <- percent_summary_2026 %>%
+  mutate(
+    rainfall = as.character(
+      rainfall
+    )
+  ) %>%
+  left_join(
+    letters_3_2_2026,
+    by = c(
+      "rainfall",
+      "product"
+    )
+  ) %>%
+  mutate(
+    rainfall = factor(
+      rainfall,
+      levels = rainfall_order
+    ),
+    
+    product = factor(
+      product,
+      levels = insecticide_order
+    ),
+    
+    Koc_label = factor(
+      Koc,
+      levels = koc_order
+    ),
+    
+    label_y = percent_control_plot + 8
+  )
+
+
+# =========================================================
+# 38. CREATE 2025 FIGURE 3.2 PANEL
+# =========================================================
+
+plot_3_2_2025 <- ggplot(
+  percent_summary_2025,
+  aes(
+    x = Koc_label,
+    y = percent_control_plot,
+    fill = product,
+    pattern = product
+  )
+) +
+  
+  geom_col_pattern(
+    width = 0.7,
+    color = "black",
+    pattern_color = "black",
+    pattern_fill = "black",
+    pattern_angle = 45,
+    pattern_density = 0.3,
+    pattern_spacing = 0.02
+  ) +
+  
+  geom_text(
+    aes(
+      y = label_y,
+      label = sig
+    ),
+    size = 4
+  ) +
+  
+  facet_wrap(
+    ~ rainfall,
+    nrow = 1,
+    labeller = labeller(
+      rainfall = c(
+        "none" = "0.00 cm",
+        "medium" = "3.81 cm",
+        "high" = "7.62 cm"
+      )
+    )
+  ) +
+  
+  scale_y_continuous(
+    breaks = seq(
+      0,
+      100,
+      by = 20
+    ),
+    expand = expansion(
+      mult = c(
+        0,
+        0
+      )
+    )
+  ) +
+  
+  coord_cartesian(
+    ylim = c(
+      0,
+      112
+    ),
+    clip = "off"
+  ) +
+  
+  scale_fill_manual(
+    values = product_fills,
+    breaks = insecticide_order,
+    labels = product_labels,
+    name = NULL
+  ) +
+  
+  scale_pattern_manual(
+    values = product_patterns,
+    breaks = insecticide_order,
+    labels = product_labels,
+    name = NULL
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "2025"
+  ) +
+  
+  theme_bw(
+    base_size = 14
+  ) +
+  
+  theme(
+    plot.title = element_text(
+      hjust = 0,
+      face = "bold",
+      size = 12
+    ),
+    
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    axis.title.x = element_blank(),
+    
+    strip.background = element_rect(
+      fill = "grey90"
+    ),
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    
+    panel.border = element_rect(
+      color = "black"
+    )
+  )
+
+
+# =========================================================
+# 39. CREATE 2026 FIGURE 3.2 PANEL
+# =========================================================
+
+plot_3_2_2026 <- ggplot(
+  percent_summary_2026,
+  aes(
+    x = Koc_label,
+    y = percent_control_plot,
+    fill = product,
+    pattern = product
+  )
+) +
+  
+  geom_col_pattern(
+    width = 0.7,
+    color = "black",
+    pattern_color = "black",
+    pattern_fill = "black",
+    pattern_angle = 45,
+    pattern_density = 0.3,
+    pattern_spacing = 0.02
+  ) +
+  
+  geom_text(
+    aes(
+      y = label_y,
+      label = sig
+    ),
+    size = 4
+  ) +
+  
+  facet_wrap(
+    ~ rainfall,
+    nrow = 1,
+    labeller = labeller(
+      rainfall = c(
+        "none" = "0.00 cm",
+        "medium" = "3.81 cm",
+        "high" = "7.62 cm"
+      )
+    )
+  ) +
+  
+  scale_y_continuous(
+    breaks = seq(
+      0,
+      100,
+      by = 20
+    ),
+    expand = expansion(
+      mult = c(
+        0,
+        0
+      )
+    )
+  ) +
+  
+  coord_cartesian(
+    ylim = c(
+      0,
+      112
+    ),
+    clip = "off"
+  ) +
+  
+  scale_fill_manual(
+    values = product_fills,
+    breaks = insecticide_order,
+    labels = product_labels,
+    name = NULL
+  ) +
+  
+  scale_pattern_manual(
+    values = product_patterns,
+    breaks = insecticide_order,
+    labels = product_labels,
+    name = NULL
+  ) +
+  
+  labs(
+    x = NULL,
+    y = NULL,
+    title = "2026"
+  ) +
+  
+  theme_bw(
+    base_size = 14
+  ) +
+  
+  theme(
+    plot.title = element_text(
+      hjust = 0,
+      face = "bold",
+      size = 12
+    ),
+    
+    axis.text.x = element_text(
+      size = 11
+    ),
+    
+    axis.ticks.x = element_line(),
+    axis.title.x = element_blank(),
+    
+    strip.background = element_rect(
+      fill = "grey90"
+    ),
+    
+    strip.text = element_text(
+      face = "bold"
+    ),
+    
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
+    
+    panel.border = element_rect(
+      color = "black"
+    )
+  )
+
+
+# =========================================================
+# 40. COMBINE FIGURE 3.2
+# =========================================================
+
+combined_3_2 <- plot_3_2_2025 / plot_3_2_2026 +
+  plot_layout(
+    heights = c(
+      1,
+      1
+    ),
+    guides = "collect"
+  ) &
+  theme(
+    legend.position = "bottom"
+  )
+
+
+figure_3_2 <- ggdraw() +
+  
+  draw_plot(
+    combined_3_2,
+    x = 0.045,
+    y = 0.065,
+    width = 0.945,
+    height = 0.925
+  ) +
+  
+  draw_label(
+    "Percent Control (%)",
+    x = 0.018,
+    y = 0.53,
+    angle = 90,
+    size = 14
+  ) +
+  
+  draw_label(
+    "Adsorption (Koc) Value",
+    x = 0.52,
+    y = 0.025,
+    size = 14
+  )
+
+
+# Display Figure 3.2.
+
+figure_3_2
+
+
+# =========================================================
+# PART VI – FIGURE 3.3
+# KOC VERSUS LARVAL RECOVERY
+# =========================================================
+
+
+# =========================================================
+# 41. PREPARE FIGURE 3.3 DATA
+# =========================================================
+
+koc_data <- bind_rows(
+  rain_2025 %>%
+    select(
+      -any_of("Koc")
+    ) %>%
+    mutate(
+      year = "2025"
+    ),
+  
+  rain_2026 %>%
+    select(
+      -any_of("Koc")
+    ) %>%
+    mutate(
+      year = "2026"
+    )
+) %>%
+  mutate(
+    product = as.character(
+      product
+    )
+  ) %>%
+  filter(
+    product != "control"
+  ) %>%
+  left_join(
+    koc_values,
+    by = "product"
+  )
+
+
+# =========================================================
+# 42. SUMMARIZE MEAN LARVAL RECOVERY
+# =========================================================
+
+koc_summary <- koc_data %>%
+  group_by(
+    year,
+    rainfall,
+    product,
+    Koc
+  ) %>%
+  summarise(
+    mean_larvae = mean(
+      total_L3_L5,
+      na.rm = TRUE
+    ),
+    .groups = "drop"
+  ) %>%
+  mutate(
+    year = factor(
+      year,
+      levels = c(
+        "2025",
+        "2026"
+      )
+    ),
+    
+    rainfall = factor(
+      rainfall,
+      levels = rainfall_order
+    ),
+    
+    log_Koc = log(
+      1 + Koc
+    )
+  )
+
+
+# =========================================================
+# 43. CREATE FIGURE 3.3
+# =========================================================
+
+figure_3_3 <- ggplot(
+  koc_summary,
+  aes(
+    x = log_Koc,
+    y = mean_larvae,
+    shape = rainfall
+  )
+) +
+  
+  geom_point(
+    size = 3,
+    alpha = 0.8
+  ) +
+  
+  facet_wrap(
+    ~ year,
+    ncol = 1
+  ) +
+  
+  scale_shape_manual(
+    values = c(
+      "none" = 16,
+      "medium" = 17,
+      "high" = 15
+    ),
+    
+    labels = c(
+      "none" = "0.00 cm",
+      "medium" = "3.81 cm",
+      "high" = "7.62 cm"
+    )
+  ) +
+  
+  labs(
+    x = expression(
+      log(1 + K[oc])
+    ),
+    
+    y = "Mean Number of L3–L5 Larvae Recovered",
+    
+    shape = NULL
+  ) +
+  
+  theme_bw() +
+  
+  theme(
+    strip.text = element_text(
+      face = "bold",
+      size = 11
+    ),
+    
+    legend.position = "top",
+    
+    axis.title = element_text(
+      size = 11
+    ),
+    
+    axis.text = element_text(
+      size = 10
+    )
+  )
+
+
+# =========================================================
+# 44. DISPLAY FIGURE 3.3
+# =========================================================
+
+figure_3_3
